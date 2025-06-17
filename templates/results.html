@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Search Results</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      background-color: #fafafa;
+      color: #333;
+    }
+    h1, h2, h3 {
+      color: #1976d2;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 10px;
+    }
+    a {
+      color: #1565c0;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .abstract {
+      background-color: #ffffff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Search Results</h1>
+
+  <div class="section">
+    <h2>Your Query</h2>
+    <p>{{ query }}</p>
+  </div>
+
+  <div class="section">
+    <h2>Summary</h2>
+    <p>{{ summary }}</p>
+  </div>
+
+  <div class="section">
+    <h2>Top Keywords</h2>
+    <ul>
+      {% for kw in keywords %}
+        <li>{{ kw }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Ranked Abstracts</h2>
+    {% for article in articles %}
+      <div class="abstract">
+        <strong><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></strong>
+        <p>{{ article.abstract }}</p>
+      </div>
+    {% endfor %}
+  </div>
+
+  <a href="/">← Back to Search</a>
+</body>
+</html>

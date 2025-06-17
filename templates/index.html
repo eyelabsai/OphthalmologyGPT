@@ -2,36 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PubMed Search</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <title>PubMed Medical Search</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      background-color: #f4f6f8;
+      color: #333;
+    }
+    h1 {
+      color: #1976d2;
+    }
+    form {
+      margin-top: 20px;
+    }
+    input[type="text"] {
+      width: 60%;
+      padding: 10px;
+      font-size: 1rem;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #1565c0;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>OphthaLLMology</h1>
-    <input type="text" id="queryInput" placeholder="Enter your search query...">
-    <button onclick="searchPubmed()">Search</button>
-    <div id="results"></div>
-  </div>
-
-  <script>
-    async function searchPubmed() {
-      const query = document.getElementById("queryInput").value;
-      const res = await fetch(`/search?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
-      const resultsDiv = document.getElementById("results");
-      resultsDiv.innerHTML = data.map(article => `
-        <div class="card">
-          <h2>${article.title}</h2>
-          <p><strong>Journal:</strong> ${article.journal}</p>
-          <p><strong>Authors:</strong> ${article.authors.join(', ')}</p>
-          <p>${article.abstract}</p>
-          <p>
-            <a href="${article.pubmed_url}" target="_blank">PubMed</a>
-            ${article.doi ? `| <a href="https://doi.org/${article.doi}" target="_blank">DOI</a>` : ''}
-          </p>
-        </div>
-      `).join("");
-    }
-  </script>
+  <h1>PubMed Semantic Search</h1>
+  <p>Enter a medical research question or topic to search PubMed:</p>
+  <form method="post">
+    <input type="text" name="query" placeholder="e.g. AI in lung cancer diagnosis" required>
+    <button type="submit">Search</button>
+  </form>
 </body>
 </html>
