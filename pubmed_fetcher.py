@@ -3,6 +3,7 @@ import requests
 import xml.etree.ElementTree as ET
 import nltk
 nltk.download('punkt')
+nltk.download('punkt_tab')
 nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
