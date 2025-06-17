@@ -1,6 +1,9 @@
 ## Steps (Mainly Changes Required) for Running Notebook
-1. Run all the installation commands (assuming the "!pip" syntax does not work for you) and check that they run correctly
-2. Change Wills Eye Manual PDF path, currently a Kaggle Path
-3. Add some Prompts (comma separated strings, where the strings themselves would be the prompts) to the variable "prompts"
+1. Install the dependencies using pip install -r requirements.txt
+2. Navigate to the file pubmed_fetcher
+3. Run the file
+4. Open http://127.0.0.1:5000/
+5. Enter Query and click the Search button
+6. You should now see the results.
 
 Also, shall we call it OphthalmologyGPT or OphthaLLMology? ;)

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PubMed Search</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>OphthaLLMology</h1>
+    <input type="text" id="queryInput" placeholder="Enter your search query...">
+    <button onclick="searchPubmed()">Search</button>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    async function searchPubmed() {
+      const query = document.getElementById("queryInput").value;
+      const res = await fetch(`/search?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = data.map(article => `
+        <div class="card">
+          <h2>${article.title}</h2>
+          <p><strong>Journal:</strong> ${article.journal}</p>
+          <p><strong>Authors:</strong> ${article.authors.join(', ')}</p>
+          <p>${article.abstract}</p>
+          <p>
+            <a href="${article.pubmed_url}" target="_blank">PubMed</a>
+            ${article.doi ? `| <a href="https://doi.org/${article.doi}" target="_blank">DOI</a>` : ''}
+          </p>
+        </div>
+      `).join("");
+    }
+  </script>
+</body>
+</html>
