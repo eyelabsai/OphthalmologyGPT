@@ -77,6 +77,9 @@ def fetch_pubmed_abstracts(query, max_results=5):
     root = ET.fromstring(efetch_response.content)
     results = []
     for article in root.findall(".//PubmedArticle"):
+        languages = [lang.text.lower() for lang in article.findall(".//Language")]
+        if not languages or "eng" not in languages:
+            continue  # Skip non-English articles
         abstract_texts = article.findall(".//AbstractText")
         title_elem = article.find(".//ArticleTitle")
         pmid_elem = article.find(".//PMID")
