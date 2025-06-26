@@ -103,7 +103,10 @@ def fetch_pubmed_abstracts(query, max_results=5):
 def index():
     if request.method == "POST":
         query = request.form["query"]
-        articles = fetch_pubmed_abstracts(query, max_results=5)
+        modified_query = query
+        if 'ocular' not in query and 'ophthalmology' not in query and 'eye' not in query:
+            modified_query = 'ocular ' + query
+        articles = fetch_pubmed_abstracts(modified_query, max_results=5)
 
         if not articles:
             return render_template("results.html", query=query, summary="No articles found.", keywords=[], abstracts=[])
