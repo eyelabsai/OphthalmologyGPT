@@ -92,7 +92,7 @@ def index():
 
         # Get LLM response
         response = client.chat.completions.create(
-            model="meta-llama/llama-3-70b-instruct",
+            model="deepseek/deepseek-chat-v3-0324:free",
             messages=session["conversation"]
         )
         assistant_reply = response.choices[0].message.content
