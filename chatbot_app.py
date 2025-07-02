@@ -13,7 +13,7 @@ app.secret_key = "my super secret key"  # change for production
 # Set up OpenRouter
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key="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"
+    api_key="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"
 )
 
 def fetch_pubmed_abstracts(query, max_results=5):
