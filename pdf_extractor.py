@@ -6,7 +6,7 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
-    api_key="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"
+    api_key="Your OpenAPI key"
 )
 
 def extract_text_by_page(pdf_path):
