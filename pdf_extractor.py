@@ -1,41 +1,52 @@
-from pdfminer.high_level import extract_pages
-from pdfminer.layout import LTTextContainer, LAParams, LTAnno, LTTextLine, LTFigure, LTLink
 import json
+import numpy as np
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LTTextContainer
+from openai import OpenAI
 
-def extract_links_and_content(pdf_path):
-    from pdfminer.high_level import extract_pages
-    from pdfminer.layout import LTTextBoxHorizontal, LTTextLineHorizontal, LAParams, LTLink
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key="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"
+)
 
-    results = []
+def extract_text_by_page(pdf_path):
+    pages = []
+    for i, page_layout in enumerate(extract_pages(pdf_path)):
+        text_content = ""
+        for element in page_layout:
+            if isinstance(element, LTTextContainer):
+                text_content += element.get_text()
+        pages.append({"page": i+1, "text": text_content.strip()})
+    return pages
 
-    laparams = LAParams()
-    for page_num, layout in enumerate(extract_pages(pdf_path, laparams=laparams)):
-        for element in layout:
-            if isinstance(element, LTTextBoxHorizontal):
-                for line in element:
-                    if isinstance(line, LTTextLineHorizontal):
-                        text = line.get_text().strip()
-                        # Look for link annotations
-                        for child in line:
-                            if isinstance(child, LTLink):
-                                link = child.uri
-                                if link and text:
-                                    results.append({
-                                        "page": page_num + 1,
-                                        "link_text": text,
-                                        "url": link
-                                    })
+def get_embedding(text):
+    response = client.embeddings.create(
+        model="deepseek/deepseek-r1:free",
+        input=text
+    )
+    return response.data[0].embedding
 
-    return results
+def build_book_json(pdf_path, output_path):
+    pages = extract_text_by_page(pdf_path)
+    print(f"Extracted {len(pages)} pages. Generating embeddings...")
 
-# Save results
-def save_json(data, out_file="pdf_links_output.json"):
-    with open(out_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+    book_data = []
+    for page in pages:
+        text = page["text"]
+        if len(text) < 20:
+            continue  # skip very short pages
+        embedding = get_embedding(text)
+        book_data.append({
+            "page": page["page"],
+            "text": text,
+            "embedding": embedding
+        })
+        print(f"Page {page['page']} processed with embedding length {len(embedding)}")
 
-# Example usage
+    with open(output_path, "w") as f:
+        json.dump(book_data, f, indent=2)
+    print(f"\n✅ Finished. Saved to {output_path}")
+
 if __name__ == "__main__":
-    pdf_file = "your_file.pdf"
-    links = extract_links_and_content(pdf_file)
-    save_json(links)
-    print(f"✅ Extracted {len(links)} hyperlinks.")
+    build_book_json("Kalla Gervasio, Travis Peck - The Wills Eye Manual_ Office and Emergency Room Diagnosis and Treatment of Eye Disease (2021, LWW Wolters Kluwer) - libgen.li.pdf", "wills_manual_deepseek.json")
+
