@@ -9,6 +9,7 @@ def search_pubmed(
     mesh_major_topic=False,
     last_n_years=None,
     max_results=10,
+    sort_order="relevance",
     email="your_email@example.com"
 ):
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
@@ -27,7 +28,7 @@ def search_pubmed(
         f"&term={advanced_query}"
         f"&retmax={max_results}"
         f"&retmode=json"
-        f"&sort=relevance"
+        f"&sort={sort_order}"
         f"&email={email}"
     )
     esearch_response = requests.get(esearch_url)
