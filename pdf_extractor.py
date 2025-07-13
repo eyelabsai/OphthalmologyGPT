@@ -13,9 +13,9 @@ import pickle
 # ========================
 # Settings & Paths
 # ========================
-login("your-nomic-api-key-here")  # Must be called once
+login("nk-EQX3wlYi6_J8TGZ1ofiq6JpBaH0ufkYehoHbXyk5oFc")  # Must be called once
 
-DATA_DIR = "./index_data"
+DATA_DIR = "./wills_eye_manual_embeddings/pdfminer_as_pdf_extractor/nomic_faiss_tfidf"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 CHUNKS_PATH = f"{DATA_DIR}/chunks.json"
@@ -118,24 +118,24 @@ def tfidf_search(query, tfidf_matrix, chunks, vectorizer, top_k=5):
 # Pipeline Entry Point
 # ========================
 def main():
-    pdf_path = "medical_manual.pdf"
+    pdf_path = "Kalla Gervasio, Travis Peck - The Wills Eye Manual_ Office and Emergency Room Diagnosis and Treatment of Eye Disease (2021, LWW Wolters Kluwer) - libgen.li.pdf"
     dim = 512
 
     # Load or generate chunks
     chunks = load_chunks()
     if not chunks:
-        print("📄 Extracting & chunking PDF...")
+        print("Extracting & chunking PDF...")
         text = extract_pdf_text(pdf_path)
         chunks = chunk_text(text)
         save_chunks(chunks)
 
     # Load or compute embeddings + FAISS
     if os.path.exists(EMBED_PATH) and os.path.exists(FAISS_PATH):
-        print("✅ Loading cached FAISS index...")
+        print("Loading cached FAISS index...")
         embeddings = load_embeddings()
         faiss_index = load_faiss_index()
     else:
-        print("🔍 Computing embeddings and FAISS index...")
+        print("Computing embeddings and FAISS index...")
         embeddings = get_nomic_embeddings(chunks, dimensionality=dim)
         save_embeddings(embeddings)
         faiss_index = build_faiss_index(embeddings)
@@ -149,19 +149,20 @@ def main():
         save_tfidf(tfidf_matrix, vectorizer)
 
     # Run query
-    query = "What are the symptoms of cardiac arrest?"
-    print(f"\n🔎 Query: {query}")
+    query = "What are the symptoms of ocular rosacea?"
+    print(f"\nQuery: {query}")
 
     results = semantic_search(query, chunks, faiss_index, dim=dim)
     if not results or all(score < 0.01 for _, score in results):
-        print("⚠️ Semantic search failed. Using TF-IDF fallback.")
+        print("Semantic search failed. Using TF-IDF fallback.")
         results = tfidf_search(query, tfidf_matrix, chunks, vectorizer)
 
-    print("\n🔍 Top Results:\n")
+    print("\nTop Results:\n")
     for passage, score in results:
         print(f"[Score: {score:.4f}]\n{passage}\n{'-'*50}")
 
 if __name__ == "__main__":
     main()
+
 
 
