@@ -1,18 +1,28 @@
 import os
+import json
 import numpy as np
 import faiss
 from nomic import embed
+from nomic.cli import login
 from pdfminer.high_level import extract_text
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from scipy import sparse
+import pickle
 
 # ========================
-# Config & Auth
+# Settings & Paths
 # ========================
-import nomic
+login("your-nomic-api-key-here")  # Must be called once
 
-nomic.cli.login(token="nk-wxksOp2QRFbcpcXFIe1pazhBskDS82RtBgvcMIe_jME")
-print("Logged In!!!!!")
+DATA_DIR = "./index_data"
+os.makedirs(DATA_DIR, exist_ok=True)
+
+CHUNKS_PATH = f"{DATA_DIR}/chunks.json"
+EMBED_PATH = f"{DATA_DIR}/embeddings.npy"
+FAISS_PATH = f"{DATA_DIR}/faiss.index"
+TFIDF_MATRIX_PATH = f"{DATA_DIR}/tfidf_matrix.npz"
+VECTORIZER_PATH = f"{DATA_DIR}/vectorizer.pkl"
 
 # ========================
 # PDF Processing
@@ -31,7 +41,20 @@ def chunk_text(text, max_chars=2000, overlap=200):
     return chunks
 
 # ========================
-# Nomic Embeddings
+# Load or Generate Chunks
+# ========================
+def load_chunks():
+    if os.path.exists(CHUNKS_PATH):
+        with open(CHUNKS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return None
+
+def save_chunks(chunks):
+    with open(CHUNKS_PATH, "w", encoding="utf-8") as f:
+        json.dump(chunks, f, indent=2)
+
+# ========================
+# Embeddings & FAISS
 # ========================
 def get_nomic_embeddings(texts, dimensionality=512):
     output = embed.text(
@@ -40,18 +63,25 @@ def get_nomic_embeddings(texts, dimensionality=512):
         task_type="search_document",
         dimensionality=dimensionality
     )
-    embeddings = np.array(output['embeddings'])
-    return embeddings
+    return np.array(output['embeddings'])
 
-# ========================
-# Build FAISS Index
-# ========================
+def save_embeddings(embs):
+    np.save(EMBED_PATH, embs)
+
+def load_embeddings():
+    return np.load(EMBED_PATH)
+
 def build_faiss_index(embeddings):
     normed = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-    dim = normed.shape[1]
-    index = faiss.IndexFlatIP(dim)
+    index = faiss.IndexFlatIP(normed.shape[1])
     index.add(normed.astype("float32"))
-    return index, normed
+    return index
+
+def save_faiss_index(index):
+    faiss.write_index(index, FAISS_PATH)
+
+def load_faiss_index():
+    return faiss.read_index(FAISS_PATH)
 
 def semantic_search(query, chunks, faiss_index, dim=512):
     query_emb = get_nomic_embeddings([query], dimensionality=dim)
@@ -67,6 +97,17 @@ def build_tfidf_index(chunks):
     tfidf_matrix = vectorizer.fit_transform(chunks)
     return tfidf_matrix, vectorizer
 
+def save_tfidf(tfidf_matrix, vectorizer):
+    sparse.save_npz(TFIDF_MATRIX_PATH, tfidf_matrix)
+    with open(VECTORIZER_PATH, "wb") as f:
+        pickle.dump(vectorizer, f)
+
+def load_tfidf():
+    tfidf_matrix = sparse.load_npz(TFIDF_MATRIX_PATH)
+    with open(VECTORIZER_PATH, "rb") as f:
+        vectorizer = pickle.load(f)
+    return tfidf_matrix, vectorizer
+
 def tfidf_search(query, tfidf_matrix, chunks, vectorizer, top_k=5):
     query_vec = vectorizer.transform([query])
     scores = cosine_similarity(query_vec, tfidf_matrix).flatten()
@@ -77,35 +118,50 @@ def tfidf_search(query, tfidf_matrix, chunks, vectorizer, top_k=5):
 # Pipeline Entry Point
 # ========================
 def main():
-    pdf_path = "Kalla Gervasio, Travis Peck - The Wills Eye Manual_ Office and Emergency Room Diagnosis and Treatment of Eye Disease (2021, LWW Wolters Kluwer) - libgen.li.pdf"  # replace with your file
-    print(f"Extracting text from: {pdf_path}")
-    text = extract_pdf_text(pdf_path)
+    pdf_path = "medical_manual.pdf"
+    dim = 512
 
-    print("Chunking text...")
-    chunks = chunk_text(text)
+    # Load or generate chunks
+    chunks = load_chunks()
+    if not chunks:
+        print("📄 Extracting & chunking PDF...")
+        text = extract_pdf_text(pdf_path)
+        chunks = chunk_text(text)
+        save_chunks(chunks)
 
-    print("Generating Nomic embeddings...")
-    embeddings = get_nomic_embeddings(chunks)
+    # Load or compute embeddings + FAISS
+    if os.path.exists(EMBED_PATH) and os.path.exists(FAISS_PATH):
+        print("✅ Loading cached FAISS index...")
+        embeddings = load_embeddings()
+        faiss_index = load_faiss_index()
+    else:
+        print("🔍 Computing embeddings and FAISS index...")
+        embeddings = get_nomic_embeddings(chunks, dimensionality=dim)
+        save_embeddings(embeddings)
+        faiss_index = build_faiss_index(embeddings)
+        save_faiss_index(faiss_index)
 
-    print("Building FAISS index...")
-    faiss_index, _ = build_faiss_index(embeddings)
+    # Load or build TF-IDF fallback
+    if os.path.exists(TFIDF_MATRIX_PATH) and os.path.exists(VECTORIZER_PATH):
+        tfidf_matrix, vectorizer = load_tfidf()
+    else:
+        tfidf_matrix, vectorizer = build_tfidf_index(chunks)
+        save_tfidf(tfidf_matrix, vectorizer)
 
-    print("Building TF-IDF fallback...")
-    tfidf_matrix, vectorizer = build_tfidf_index(chunks)
+    # Run query
+    query = "What are the symptoms of cardiac arrest?"
+    print(f"\n🔎 Query: {query}")
 
-    # Query
-    query = "What are the symptoms of ocular rosacea?"
-    print(f"\nQuery: {query}")
-
-    results = semantic_search(query, chunks, faiss_index)
+    results = semantic_search(query, chunks, faiss_index, dim=dim)
     if not results or all(score < 0.01 for _, score in results):
-        print("Semantic search weak or failed. Using TF-IDF fallback.")
+        print("⚠️ Semantic search failed. Using TF-IDF fallback.")
         results = tfidf_search(query, tfidf_matrix, chunks, vectorizer)
 
-    print("\nTop Results:\n")
+    print("\n🔍 Top Results:\n")
     for passage, score in results:
         print(f"[Score: {score:.4f}]\n{passage}\n{'-'*50}")
 
 if __name__ == "__main__":
     main()
+
 
