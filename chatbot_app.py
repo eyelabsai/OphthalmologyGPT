@@ -5,6 +5,7 @@ from openai import OpenAI
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from search_pubmed import search_pubmed
+from semantic import semantic_search, tfidf_search
 
 app = Flask(__name__)
 app.secret_key = "my super secret key"  # change for production
@@ -14,36 +15,6 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key="OPEN API KEY"
 )
-
-# def fetch_pubmed_abstracts(query, max_results=5):
-#     base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
-#     email = "your_email@example.com"
-#     r = requests.get(f"{base}esearch.fcgi", params={
-#         "db": "pubmed", "term": query, "retmax": max_results, "retmode": "json", "email": email
-#     })
-#     pmids = r.json().get("esearchresult", {}).get("idlist", [])
-#     if not pmids:
-#         return []
-#
-#     r2 = requests.get(f"{base}efetch.fcgi", params={
-#         "db": "pubmed", "id": ",".join(pmids), "retmode": "xml", "email": email
-#     })
-#     root = ET.fromstring(r2.content)
-#     out = []
-#     for art in root.findall(".//PubmedArticle"):
-#         langs = [l.text.lower() for l in art.findall(".//Language") if l.text]
-#         if "eng" not in langs:
-#             continue
-#         abstract = " ".join(a.text for a in art.findall(".//AbstractText") if a.text)
-#         title = art.findtext(".//ArticleTitle", default="No Title")
-#         pmid = art.findtext(".//PMID")
-#         doi = None
-#         for id in art.findall(".//ArticleId"):
-#             if id.attrib.get("IdType") == "doi":
-#                 doi = id.text
-#         url = f"https://doi.org/{doi}" if doi else f"https://pubmed.ncbi.nlm.nih.gov/{pmid}"
-#         out.append({"title": title, "abstract": abstract, "url": url})
-#     return out
 
 def extract_keywords(texts, top_k=10):
     vec = TfidfVectorizer(stop_words='english', max_features=1000)
@@ -61,11 +32,13 @@ def index():
     if "references" not in session:
         session["references"] = []
 
+    manual_matches = []
+
     if request.method == "POST":
         user_input = request.form["query"]
         session["conversation"].append({"role": "user", "content": user_input})
 
-        # If first question, fetch PubMed
+        # If first few questions, fetch PubMed
         if len(session["conversation"]) <= 5:
             modified_query = user_input
             if not any(k in user_input for k in ["ocular", "ophthalmology", "eye"]):
@@ -81,13 +54,17 @@ def index():
                 keywords = extract_keywords(abstracts)
                 session["conversation"].append({
                     "role": "system",
-                    "content": f"Relevant PubMed articles found with keywords: {', '.join(keywords)}"
+                    "content": f"Relevant PubMed articles found with abstracts: {', '.join(joined_abstracts)}"
                 })
             else:
                 session["conversation"].append({
                     "role": "system",
                     "content": "No relevant PubMed articles found."
                 })
+        #Wills Eye Manual
+        manual_matches = semantic_search(user_input, top_k=3)
+        if not manual_matches or all(m["score"] < 0.01 for m in manual_matches):
+            manual_matches = tfidf_search(user_input, top_k=3)
 
         # Get LLM response
         response = client.chat.completions.create(
@@ -106,7 +83,7 @@ def index():
             else:
                 conversation_rendered.append(msg)
 
-        return render_template("chat.html", conversation=conversation_rendered, references=session["references"])
+        return render_template("chat.html", conversation=conversation_rendered, references=session["references"], manual_results=manual_matches)
 
     return render_template("index.html")
 

@@ -20,6 +20,10 @@
             z-index: 1000;
             display: none;
         }
+        .manual-block {
+            background-color: #fef9ec;
+            border-left: 4px solid #f1c40f;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -54,6 +58,10 @@
         </ul>
     </div>
     {% endif %}
+
+    manual_matches = semantic_search(user_input, top_k=3)
+        if not manual_matches or all(m["score"] < 0.01 for m in manual_matches):
+            manual_matches = tfidf_search(user_input, top_k=3)
 
     <form method="post" class="mt-4" id="chat-form">
         <div class="input-group">
