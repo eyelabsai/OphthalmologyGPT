@@ -5,7 +5,7 @@ from nomic.cli import login
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy import sparse
 
-login("your-nomic-api-key")  # call once
+login("NOMIC KEY")  # call once
 
 DATA_DIR = "./wills_eye_manual_embeddings/pdfminer_as_pdf_extractor/nomic_faiss_tfidf"
 EMBED_DIM = 512

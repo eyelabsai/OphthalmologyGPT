@@ -59,9 +59,17 @@
     </div>
     {% endif %}
 
-    manual_matches = semantic_search(user_input, top_k=3)
-        if not manual_matches or all(m["score"] < 0.01 for m in manual_matches):
-            manual_matches = tfidf_search(user_input, top_k=3)
+    {% if manual_results %}
+    <div class="card my-3">
+        <div class="card-header"><strong>Wills Eye Manual Matches</strong></div>
+        <div class="card-body">
+      {% for result in manual_results %}
+        <p>{{ result.text }}</p>
+        <hr>
+      {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
     <form method="post" class="mt-4" id="chat-form">
         <div class="input-group">

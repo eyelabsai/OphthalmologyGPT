@@ -1,6 +1,20 @@
 import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from bs4 import BeautifulSoup
+import time
+def fetch_introduction(url):
+    try:
+        resp = requests.get(url)
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        section = soup.find('div', class_='abstract')
+        if section:
+            paragraphs = section.find_all('p')
+            if paragraphs:
+                return paragraphs[0].get_text(strip=True)
+            return section.get_text(strip=True)
+    except Exception:
+        return None
 
 def search_pubmed(
     query,
@@ -53,5 +67,7 @@ def search_pubmed(
         pmid = pmid_elem.text if pmid_elem is not None else None
         doi = doi_elem.text if doi_elem is not None else None
         url = f"https://doi.org/{doi}" if doi else f"https://pubmed.ncbi.nlm.nih.gov/{pmid}"
-        results.append({"title": title, "abstract": abstract, "url": url})
+        introduction = fetch_introduction(url)
+        time.sleep(0.2)  # Respectful delay between requests
+        results.append({"title": title, "abstract": abstract, "url": url, "introduction": introduction})
     return results
